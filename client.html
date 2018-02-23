@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<!--
+
+//
+//	FILE: client.html
+//	PROJECT: A06_jQuery_JSON_AJAX
+//	STUDENT: Felipe Flor
+//	FIRST VERSION: 2018-01-12
+//	DESCRIPTION: This is the client-side page for the A06_jQuery_JSON_AJAX.
+//      This page acts as a mini text-editor. The user may open, save and create new text files.
+//      It uses AJAX calls (via jQuery) to receive information from the server (in JSON format).
+//
+//      Student notes:
+//          - jQuery - A library for Javascript (It's being used in this page every time a $ appears). The purpose behind
+//                     it is to make life easier. For example, every single AJAX calls made in this page were done as jQuery methods.
+//                                 - $ is just another way of typing "jQuery".
+//                                 - Notice how the selector of jQuery uses the same standard as CCS (Most important: "#abc" (means id == "abc"))
+//
+//          - AJAX - Performs asynchronous activities. This is what allows the page to get new information from the server without needing to reload
+//                   in its entirety.
+//
+//          - JSON - Just a way to store information. Some people even calls this a "fat-free" XML. 
+//                    E.g.: {Name: "Felipe", Favorite_Colours: ["Blue", "Purple"], Pet: { Type: "Dog", Breed: "Golden Retriever"}}
+//
+
+-->
+
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script>
+
+    var fileSelectInstruction = "Please Select a File"; // This is the guaranteed first item in the file selection combobox
+
+    // jQuery: Once the document is ready, execute function called pageReady()
+    $(document).ready(pageReady);
+
+
+
+
+    //
+    //	FUNCTION:	pageReady
+    //	DESCRIPTION:
+    //      Is invoked when jQuery informs the page has been fully loaded. Causes the combobox list to refresh and
+    //      holds the event handlers for button presses from jQuery.
+    //	PARAMETERS: void
+    //	RETURNS: void
+    //
+    function pageReady()
+    {
+
+        refreshFileList(); // Put the list of .txt in the combobox (SELECT)
+
+        // If the update button is pressed. If a file is selected on the SELECT object, overwrite that file.
+        $("#updateButton").click(function()
+        {
+            var fileSelected = document.getElementById("fileSelect").value;
+            var textContent = document.getElementById("textBox").value;
+            if (fileSelected !== fileSelectInstruction)
+            {
+                saveToFile(fileSelected,textContent);
+            }
+        });
+
+
+        // If the load button is pressed. If a file is selected on the SELECT object, put that file's content into the text area.
+        $("#loadButton").click(function()
+        {
+            var fileSelected = document.getElementById("fileSelect").value;
+            if (fileSelected !== fileSelectInstruction)
+            {
+                $.ajax({url: "fileHandler.php?fileName="+fileSelected+"&action=read",
+                    success: function(result)
+                    {
+                        var resultParsed = JSON.parse(result);
+                        var fileContent = resultParsed.fileContent;
+                        var feedback = resultParsed.feedback;
+                        if (feedback != "Success!")
+                        {
+                            alert(feedback);
+                        }
+                        document.getElementById("textBox").value = fileContent;
+
+                    },
+                    error: function(jqXHR, textStatus, errorThrown)
+                    {
+                        alert("Failed to complete the jQuery.ajax() method: " + textStatus);
+                    }});
+
+                // Student Note:
+                //      A simpler approach could possibly be: $("#textBox").load(fileSelected);
+                //      However, this assignment required data from the server to be passed to the client in JSON format.
+            }
+        });
+
+
+        // If the save new button is pressed. Prompt the user for a file name and save the contents from the text area on to the file.
+        $("#saveNewButton").click(function()
+        {
+            // Prompt user for file name
+            var destinationFile = "";
+            do
+            {
+                destinationFile = prompt("Select the file name (it will be a .txt - no need to put the extension):");
+            } while (!destinationFile)  //Must not be blank
+
+            destinationFile = destinationFile + ".txt";
+            var textContent = document.getElementById("textBox").value;
+
+            saveToFile(destinationFile,textContent);
+        });
+
+    }
+
+
+
+
+    //
+    //	FUNCTION:	saveToFile
+    //	DESCRIPTION:
+    //      Causes a text content to be saved in a file on to the server.
+    //	PARAMETERS:
+    //      string fileName - The name of the file (with extension).
+    //      string textContent - The text that will be saved.
+    //	RETURNS: void
+    //
+    function saveToFile(fileName, textContent)
+    {
+        $.ajax({url: "fileHandler.php?fileName="+fileName+"&action=write&textContent="+textContent,
+            success: function(result)
+            {
+                var resultParsed = JSON.parse(result);
+                var feedback = resultParsed.feedback;
+                alert(feedback);
+                refreshFileList();
+            },
+            error: function(jqXHR, textStatus, errorThrown)
+            {
+                alert("Failed to complete the jQuery.ajax() method: " + textStatus);
+            }});
+    }
+
+
+
+
+    //
+    //	FUNCTION:	refreshFileList
+    //	DESCRIPTION:
+    //      Causes the SELECT object to have the most up-to-date information in regards to text files available on the server..
+    //	PARAMETERS: void
+    //	RETURNS: void
+    //
+    function refreshFileList()
+    {
+        // Clearing the Select Box
+        $('#fileSelect').children().remove(); // Delete all current elements from the Select object
+        $('#fileSelect').append($('<option>', { value : fileSelectInstruction }).text(fileSelectInstruction));
+
+
+        // Load the SELECT (Combobox) with text file names
+        $.getJSON("fileList.php", function(result)
+        {
+            $.each(result, function(i, field)
+            {
+                $('#fileSelect').append($('<option>', { value : field }).text(field));
+            });
+        });
+    }
+
+</script>
+    <style>
+        body
+        {
+            text-align: center;
+            background-color: #2D597F;
+            font-family: Calibri;
+            color: #A6D6FF;
+        }
+
+        #fileSelect
+        {
+            background-color: #5AB2FF;
+        }
+
+        button
+        {
+            background-color: lightblue;
+            width: 120px;
+        }
+
+        button:hover
+        {
+            background-color: lavender;
+        }
+
+        textarea
+        {
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+            background-color: #CFCEE5;
+            color: darkblue;
+        }
+    </style>
+</head>
+<body>
+
+<hr />
+<h1>SETpad Online</h1>
+<hr />
+
+<p>Select your file:
+<select  id="fileSelect" style="width: 150px;" >
+</select>
+
+</p>
+
+<button id="saveNewButton" >Save New</button>
+<button id="updateButton" >Update</button>
+<button id="loadButton" >Load</button>
+
+<textarea id="textBox" rows="20" cols="80"></textarea>
+
+</body>
+</html>
+
+
